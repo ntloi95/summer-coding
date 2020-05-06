@@ -2,7 +2,7 @@
  * @ Author: Loi Nguyen
  * @ Create Time: 2020-04-29 20:31:00
  * @ Modified by: Loi Nguyen
- * @ Modified time: 2020-04-30 17:03:45
+ * @ Modified time: 2020-05-06 17:04:55
  * @ Description:
  */
 
@@ -25,11 +25,12 @@ var nRow, nCol, nGaz, xStart, yStart int
 var matrix [][]int
 var gazList []ii
 var gazEdge [][]int
-var gazStar [][]ii
+var gazStar [][]ii // gazStar[i] Postition list of stars near i-th gaz
 var mapGazID [][]int
 var mapVisited [][]bool
 var bfsVisited [][]bool
-var starCollected [][]bool
+var starVisited [][]bool // mark map of bfs of star visited
+var reachCell [][]bool   // mark cell on the map of tank has already reached.
 var forDirections []ii
 var backtrack [][]ii
 var depth [][]int
@@ -41,12 +42,12 @@ var starPath [][][]ii
 var gazPath [][][]ii
 
 func main() {
-	mapName = "map.txt"
-	
+	mapName = "map_100_100.txt"
+
 	input()
-	
+
 	buildGazMap()
-	
+
 	path1 := toNearestGaz()
 	nearestGazPos := path1[len(path1)-1]
 	nearestGazID := mapGazID[nearestGazPos.x][nearestGazPos.y]
@@ -60,6 +61,12 @@ func main() {
 	output(path)
 }
 
+func updateReachCell(path []ii) {
+	for _, pos := range path {
+		reachCell[pos.x][pos.y] = true
+	}
+}
+
 func genPathByGazOrder() []ii {
 	path := []ii{}
 
@@ -67,11 +74,18 @@ func genPathByGazOrder() []ii {
 		// Collect star arround gazOrder[i]
 		gazID := gazOrder[i]
 		for j := 0; j < len(gazStar[gazID]); j++ {
+			x, y := gazStar[gazID][j].x, gazStar[gazID][j].y
+			if reachCell[x][y] {
+				continue
+			}
+
 			path = append(path, starPath[gazID][j]...)
 
 			backPath := reversePath(gazList[gazID], starPath[gazID][j])
 
 			path = append(path, backPath...)
+
+			updateReachCell(path)
 		}
 
 		// Go to next gaz station
@@ -79,6 +93,7 @@ func genPathByGazOrder() []ii {
 			from := gazOrder[i]
 			to := gazOrder[i+1]
 
+			updateReachCell(gazPath[from][to])
 			path = append(path, gazPath[from][to]...)
 		}
 	}
@@ -93,14 +108,12 @@ func dfsGaz(gazID int) {
 
 	gazVisited[gazID] = true
 	cntGazVisited++
-	gazOrder = append(gazOrder, gazID)
+	if cntGazVisited != len(gazList) {
+		gazOrder = append(gazOrder, gazID)
+	}
 
 	for _, e := range gazEdge[gazID] {
 		dfsGaz(e)
-
-		if cntGazVisited != len(gazList) {
-			gazOrder = append(gazOrder, gazID)
-		}
 	}
 }
 
@@ -170,6 +183,14 @@ func buildGazMap() {
 
 	for i := 0; i < len(gazList); i++ {
 		bfsGaz(i, gazList[i].x, gazList[i].y)
+	}
+
+	// reverse gazStar[i] & starPath[i]
+	for i := 0; i < len(gazList); i++ {
+		for head, tail := 0, len(gazStar[i])-1; head < tail; head, tail = head+1, tail-1 {
+			gazStar[i][head], gazStar[i][tail] = gazStar[i][tail], gazStar[i][head]
+			starPath[i][head], starPath[i][tail] = starPath[i][tail], starPath[i][head]
+		}
 	}
 }
 
@@ -249,9 +270,9 @@ func bfsGaz(gazID, x0, y0 int) {
 				gazPath[gazID][gazID2] = path
 				gazPath[gazID2][gazID] = reversePath(gazPos, path)
 			case 3: // Star
-				if starCollected[x][y] == false && depth[x][y] <= nGaz/2 {
+				if starVisited[x][y] == false && depth[x][y] <= nGaz/2 {
 					gazStar[gazID] = append(gazStar[gazID], ii{x, y})
-					starCollected[x][y] = true
+					starVisited[x][y] = true
 
 					// Trace path
 					starPath[gazID] = append(starPath[gazID], make([]ii, 0))
@@ -293,7 +314,8 @@ func input() {
 		mapGazID = append(mapGazID, make([]int, nCol))
 		depth = append(depth, make([]int, nCol))
 		backtrack = append(backtrack, make([]ii, nCol))
-		starCollected = append(starCollected, make([]bool, nCol))
+		starVisited = append(starVisited, make([]bool, nCol))
+		reachCell = append(reachCell, make([]bool, nCol))
 		bfsVisited = append(bfsVisited, make([]bool, nCol))
 		for j := 0; j < nCol; j++ {
 			fmt.Scanf("%d", &matrix[i][j])
@@ -304,7 +326,7 @@ func input() {
 }
 
 func output(path []ii) {
-	os.Stdout, _ = os.OpenFile("result_"+mapName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	os.Stdout, _ = os.OpenFile("path_"+mapName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	for i := 0; i < len(path); i++ {
 		fmt.Printf("%d %d\n", path[i].x+1, path[i].y+1)
 	}
