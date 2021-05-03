@@ -1,6 +1,6 @@
 # summer-coding
 
-One dummy solution for event Fossil Summer Coding for student 2020
+One dummy solution for event Fossil Summer Coding for students 2020
 
 Live demo: https://summercoding.herokuapp.com/ (source: https://github.com/ntloi95/summer-coding-runner)
 
